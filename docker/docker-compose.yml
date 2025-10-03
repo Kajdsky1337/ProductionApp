@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: ProductionAppDb
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.Server
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=ProductionAppDb;Username=user;Password=pass"
+    depends_on:
+      - db
+    ports:
+      - "5000:80"
+
+  client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.Client
+    depends_on:
+      - server
+    ports:
+      - "5001:80"
+
+volumes:
+  db-data:

@@ -1,0 +1,28 @@
+# --- etap build z SDK ---
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# 1) kopiujemy tylko pliki *.csproj, robimy restore
+COPY ProductionApp.Server/*.csproj ProductionApp.Server/
+COPY ProductionApp.Shared/*.csproj ProductionApp.Shared/
+COPY ProductionApp.Infrastructure/*.csproj ProductionApp.Infrastructure/
+RUN dotnet restore ProductionApp.Server/ProductionApp.Server.csproj
+
+# 2) kopiujemy ca³y kod i publish-ujemy
+COPY . .
+WORKDIR /src/ProductionApp.Server
+RUN dotnet publish -c Release -o /app/publish
+
+# --- etap runtime z ASP.NET Core Runtime (l¿ejszy ni¿ SDK) ---
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+
+# 3) kopiujemy artefakty z etapu build
+COPY --from=build /app/publish ./
+
+# 4) konfiguracja URL i expose portu
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Development   # jeœli chcesz dev-owe ustawienia
+
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ProductionApp.Server.dll"]
